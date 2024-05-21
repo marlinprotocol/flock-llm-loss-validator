@@ -30,8 +30,10 @@
 # base image
 FROM python:3.11.9-slim-bullseye
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 # install dependency tools
-RUN apk add --no-cache net-tools iptables iproute2 wget
+RUN apt-get update -y && apt-get install apt-utils -y && apt-get install net-tools iptables iproute2 wget -y && apt-get autoclean && apt-get autoremove && rm -rf /var/lib/apt/lists/*
 
 # working directory
 WORKDIR /app
@@ -60,16 +62,18 @@ RUN chmod +x vsock-to-ip
 RUN wget -O dnsproxy http://public.artifacts.marlin.pro/projects/enclaves/dnsproxy_v0.46.5_linux_amd64
 RUN chmod +x dnsproxy
 
+# your custom setup goes here
+COPY requirements.txt .
+COPY ./src /app
+
+RUN pip3 install --no-cache-dir -r requirements.txt -f https://download.pytorch.org/whl/torch_stable.html
+
 # supervisord config
 COPY supervisord.conf /etc/supervisord.conf
 
 # setup.sh script that will act as entrypoint
 COPY setup.sh ./
 RUN chmod +x setup.sh
-
-# your custom setup goes here
-COPY requirements.txt .
-COPY ./src /app
 
 # entry point
 ENTRYPOINT [ "/app/setup.sh" ]
